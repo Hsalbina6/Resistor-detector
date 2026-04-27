@@ -18,23 +18,8 @@ if "inventory" not in st.session_state:
 
 
 # ==========================================
-# HELPER FUNCTIONS & DATA
+# HELPER FUNCTIONS
 # ==========================================
-
-# Exact 4-band color mappings for your 10 trained classes
-RESISTOR_COLORS = {
-    "10": [("Brown", "#8B4513"), ("Black", "#000000"), ("Black", "#000000"), ("Gold", "#FFD700")],
-    "220": [("Red", "#FF0000"), ("Red", "#FF0000"), ("Brown", "#8B4513"), ("Gold", "#FFD700")],
-    "330": [("Orange", "#FFA500"), ("Orange", "#FFA500"), ("Brown", "#8B4513"), ("Gold", "#FFD700")],
-    "1000": [("Brown", "#8B4513"), ("Black", "#000000"), ("Red", "#FF0000"), ("Gold", "#FFD700")],
-    "4700": [("Yellow", "#FFDF00"), ("Violet", "#8A2BE2"), ("Red", "#FF0000"), ("Gold", "#FFD700")],
-    "6800": [("Blue", "#0000FF"), ("Gray", "#808080"), ("Red", "#FF0000"), ("Gold", "#FFD700")],
-    "8200": [("Gray", "#808080"), ("Red", "#FF0000"), ("Red", "#FF0000"), ("Gold", "#FFD700")],
-    "9200": [("White", "#FFFFFF"), ("Red", "#FF0000"), ("Red", "#FF0000"), ("Gold", "#FFD700")],
-    "10000": [("Brown", "#8B4513"), ("Black", "#000000"), ("Orange", "#FFA500"), ("Gold", "#FFD700")],
-    "20000": [("Red", "#FF0000"), ("Black", "#000000"), ("Orange", "#FFA500"), ("Gold", "#FFD700")],
-}
-
 
 def format_resistance(value):
     try:
@@ -44,19 +29,6 @@ def format_resistance(value):
         return f"{val} Ω"
     except ValueError:
         return f"{value} Ω"
-
-
-def render_color_code(class_name):
-    if class_name in RESISTOR_COLORS:
-        bands = RESISTOR_COLORS[class_name]
-        html = "<div style='display: flex; gap: 6px; margin-top: 5px; margin-bottom: 15px;'>"
-        for name, hex_code in bands:
-            text_color = "white" if name in ["Black", "Brown", "Blue", "Violet"] else "black"
-            border = "1px solid #ccc" if name == "White" else "none"
-            html += f"<div style='background-color: {hex_code}; color: {text_color}; padding: 4px 10px; border-radius: 4px; border: {border}; font-size: 14px; font-weight: 600;'>{name}</div>"
-        html += "</div>"
-        return html
-    return ""
 
 
 def analyze_image_quality(image):
@@ -174,7 +146,7 @@ if model_choice == "Specialist Model":
     st.title("⚡ Specialist Model: Common Resistor Detection")
     st.write(
         "Upload or capture a resistor image. The YOLO Specialist model will detect "
-        "the resistor, classify its value, and break down its color code."
+        "the resistor and classify its value."
     )
 
     MODEL_PATH = "my_SP_1_Model.pt"
@@ -273,10 +245,6 @@ if model_choice == "Specialist Model":
                     # Display Prediction
                     st.success(f"**{formatted_val}**")
                     st.progress(conf_score, text=f"Confidence: {conf_score*100:.1f}%")
-                    
-                    # Display Educational Color Code Breakdown
-                    st.caption(f"Standard 4-Band Color Code for {formatted_val}:")
-                    st.markdown(render_color_code(class_name), unsafe_allow_html=True)
                     
                     # Add to temporary array in case user wants to save
                     detected_items.append({
