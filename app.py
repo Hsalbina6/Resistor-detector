@@ -134,7 +134,7 @@ if model_choice == "Specialist Model":
 
 # --- GENERALIST MODEL (COMING SOON) ---
 elif model_choice == "Generalist Model (Coming Soon)":
-    st.title("🌈 Generalist Model (Color Band Reader)")
+    st.title("📊 Generalist Model (Color Band Reader)")
     st.write(
         "This model processes cropped resistors to explicitly read and decode their color bands. "
         "Unlike the Specialist model, it is not limited to a pre-defined list of values and can decode *any* standard resistor. "
