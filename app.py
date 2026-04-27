@@ -1,4 +1,5 @@
 import os
+# Force uninstall the broken OpenCV version on Streamlit Cloud to prevent crashing
 os.system("pip uninstall -y opencv-python")
 
 import streamlit as st
@@ -6,122 +7,75 @@ from ultralytics import YOLO
 from PIL import Image
 import tempfile
 
-st.set_page_config(
-    page_title="Smart Resistor Detection System",
-    page_icon="⚡",
-    layout="wide"
-)
-
-SPECIALIST_VALUES = ["10", "220", "330", "1000", "4700", "6800", "8200", "9200", "10000", "20000"]
-MODEL_PATH = "my_SP_1_Model.pt"
-
-
+# Helper function to format raw numbers into readable Ohms/Kilo-ohms
 def format_resistance(value):
-    value = int(value)
-    if value >= 1000:
-        return f"{value/1000:g} kΩ"
-    return f"{value} Ω"
+    try:
+        val = int(value)
+        if val >= 1000:
+            return f"{val/1000:g} kΩ"
+        return f"{val} Ω"
+    except ValueError:
+        return f"{value} Ω"
 
-
-@st.cache_resource
-def load_model():
-    return YOLO(MODEL_PATH)
-
-
-model = load_model()
-
-st.title("⚡ Smart Resistor Detection System")
-st.write(
-    "This app demonstrates a resistor detection system using a trained YOLO Specialist model. "
-    "The future goal is to combine a Specialist model, a Generalist model, and Smart Logic to improve reliability."
+# 1. Page Config
+st.set_page_config(
+    page_title="Resistor Value Detector",
+    page_icon="⚡",
+    layout="wide" 
 )
 
-left_col, main_col, right_col = st.columns([1.1, 2.2, 1.2])
+# ==========================================
+# SIDEBAR CONFIGURATION
+# ==========================================
+st.sidebar.title("⚙️ Model Settings")
 
-with left_col:
-    st.subheader("Specialist Values")
-    st.write("Current resistor values supported by the Specialist model:")
+# Model Selection
+model_choice = st.sidebar.radio(
+    "Select AI Logic:",
+    ["Specialist Model", "Generalist Model (Coming Soon)", "Smart Logic (Coming Soon)"]
+)
 
-    for value in SPECIALIST_VALUES:
-        st.markdown(f"- **{format_resistance(value)}**")
+st.sidebar.markdown("---")
 
-    st.info(
-        "Specialist Note:\n\n"
-        "The Specialist model is limited to the resistor values listed above, "
-        "but it can perform well in tougher image conditions because it directly "
-        "learns the full visual pattern of each known resistor value."
-    )
+# Notes Section
+st.sidebar.markdown("### 📝 Model Notes")
+st.sidebar.info(
+    "**Specialist:** Limited to the list below, but highly robust. Can detect values even in tough conditions (blur, angles, poor lighting).\n\n"
+    "**Generalist:** Not limited to a list. Reads the exact color bands, but requires good image conditions to distinguish colors accurately.\n\n"
+    "**Smart Logic:** Combines both for the absolute best outcome."
+)
 
-with right_col:
-    st.subheader("Model Notes")
+st.sidebar.markdown("---")
 
-    st.markdown("### Specialist Model")
+# Supported Values List (Exact match to the 10 trained YOLO classes)
+st.sidebar.markdown("### 🎯 Specialist Values")
+st.sidebar.markdown("""
+* **Ohms (Ω):** 10, 220, 330
+* **Kilo-ohms (kΩ):** 1k, 4.7k, 6.8k, 8.2k, 9.2k, 10k, 20k
+""")
+
+
+# ==========================================
+# MAIN CONTENT AREA
+# ==========================================
+
+# --- SPECIALIST MODEL ---
+if model_choice == "Specialist Model":
+    st.title("⚡ Specialist Model: Common Resistor Detection")
     st.write(
-        "Detects common resistor values directly. It is accurate for known values, "
-        "but cannot predict values outside its trained list."
+        "Upload or capture a resistor image. The YOLO Specialist model will detect "
+        "the resistor and classify its common resistance value."
     )
 
-    st.markdown("### Generalist Model")
-    st.write(
-        "Coming soon. This model will detect individual resistor color bands and compute "
-        "the resistance value. It is not limited to a fixed value list, but needs clearer image conditions."
-    )
+    MODEL_PATH = "my_SP_1_Model.pt"
 
-    st.markdown("### Smart Logic")
-    st.write(
-        "Coming soon. This logic will combine the Specialist and Generalist outputs to handle agreement, "
-        "conflict, and confidence levels."
-    )
+    @st.cache_resource
+    def load_model():
+        return YOLO(MODEL_PATH)
 
-with main_col:
-    st.subheader("Choose Detection Mode")
+    model = load_model()
 
-    model_choice = st.selectbox(
-        "Select model mode:",
-        [
-            "Specialist Model",
-            "Generalist Model (Coming Soon)",
-            "Smart Logic System (Coming Soon)"
-        ]
-    )
-
-    if model_choice != "Specialist Model":
-        st.warning("This mode is planned but not active yet. Please use the Specialist Model for now.")
-        st.stop()
-
-    st.success("Specialist Model selected.")
-
-    st.subheader("Smart Logic Workflow Preview")
-
-    st.markdown(
-        """
-        ```text
-        Models Output Computed Values
-                    |
-                    v
-        Do both models agree?
-            | Yes --> Display Value (High Confidence)
-            |
-            No
-            v
-        Does the predicted value exist in the Specialist database?
-            | Yes --> Display Specialist Value (Medium Confidence)
-            |
-            No
-            v
-        Display Generalist Value (Low Confidence)
-        ```
-        """
-    )
-
-    st.caption(
-        "Smart Logic idea: the system gives high confidence when both models agree, "
-        "downgrades confidence when there is conflict, and uses model limitations to guide the final output."
-    )
-
-    st.divider()
-
-    st.subheader("Prediction Settings")
+    st.markdown("### Prediction Settings")
     confidence = st.slider("Confidence Threshold", 0.05, 1.0, 0.25, 0.05)
 
     option = st.radio(
@@ -141,7 +95,7 @@ with main_col:
 
     if image_file is not None:
         image = Image.open(image_file).convert("RGB")
-        st.image(image, caption="Input Image", use_container_width=True)
+        st.image(image, caption="Input Image", width=400)
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
             image.save(temp_file.name)
@@ -154,7 +108,8 @@ with main_col:
         )
 
         result = results[0]
-        plotted_image = result.plot()[..., ::-1] # Converting BGR to RGB for Streamlit
+        # [..., ::-1] converts YOLO's BGR output to Streamlit's required RGB format
+        plotted_image = result.plot()[..., ::-1]
 
         st.subheader("Prediction Result")
         st.image(plotted_image, caption="Detected Resistor Value", use_container_width=True)
@@ -170,9 +125,43 @@ with main_col:
                 conf_score = float(box.conf[0])
 
                 st.success(f"Predicted Value: **{format_resistance(class_name)}**")
-                st.write(f"Raw Model Class: {class_name} Ω")
+                st.write(f"Raw Model Class: {class_name}")
                 st.write(f"Confidence: {conf_score:.2f}")
 
         os.remove(temp_path)
     else:
         st.info("Upload an image or use the camera to start detection.")
+
+# --- GENERALIST MODEL (COMING SOON) ---
+elif model_choice == "Generalist Model (Coming Soon)":
+    st.title("🌈 Generalist Model (Color Band Reader)")
+    st.write(
+        "This model processes cropped resistors to explicitly read and decode their color bands. "
+        "Unlike the Specialist model, it is not limited to a pre-defined list of values and can decode *any* standard resistor. "
+        "However, it requires clear lighting and good conditions to accurately distinguish colors."
+    )
+    st.warning("🚧 This feature is currently under development. Check back soon!")
+
+# --- SMART LOGIC (COMING SOON) ---
+elif model_choice == "Smart Logic (Coming Soon)":
+    st.title("🧠 Smart Logic: Hybrid Detection")
+    st.write(
+        "The Smart Logic system serves as the ultimate brain of the application. It strategically leverages both the Specialist and Generalist models to ensure the highest possible accuracy for every detection."
+    )
+    
+    st.markdown("### 🔄 Smart Logic Workflow")
+    
+    st.info("**1. Input Image** ➔ Passes through Base Resistor Detection Model ➔ Extracts **Cropped Resistors**")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.success("**2. Specialist Analysis**\nThe cropped resistor is first fed to the Specialist Model.")
+    with col2:
+        st.warning("**3. Confidence Check**\nDoes the Specialist Model recognize it with high confidence?")
+        
+    st.markdown("""
+    * ✅ **Yes (High Confidence):** Directly output the Specialist predicted value.
+    * ❌ **No (Low Confidence / Not on list):** Route the cropped image to the **Generalist Model** to read the exact color bands, then output the value.
+    """)
+    
+    st.warning("🚧 This logic pipeline is currently under development. Check back soon!")
